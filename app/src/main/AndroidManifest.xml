@@ -62,7 +62,7 @@
         <!-- Google API Info; Research on Security for this!!! -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDHkJ8QAUevDMxkLO4hzVTd2lbXfmthGmE" />
+            android:value="${MAPS_API_KEY}" />
 
 
         <!-- Settings  -->
