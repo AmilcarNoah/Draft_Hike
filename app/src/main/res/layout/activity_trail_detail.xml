@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvTrailName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Trail Name"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="30dp" />
+
+        <TextView
+            android:id="@+id/tvDistance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Distance: "
+            android:textSize="24sp"
+            android:layout_marginBottom="20dp" />
+
+        <TextView
+            android:id="@+id/tvDuration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Duration: "
+            android:textSize="24sp"
+            android:layout_marginBottom="20dp" />
+
+        <TextView
+            android:id="@+id/tvBenches"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Benches: "
+            android:textSize="24sp"
+            android:layout_marginBottom="20dp" />
+
+        <TextView
+            android:id="@+id/tvDifficulty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Difficulty: "
+            android:textSize="24sp"
+            android:layout_marginBottom="20dp" />
+
+        <TextView
+            android:id="@+id/tvDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Description: "
+            android:textSize="20sp"
+            android:layout_marginBottom="30dp" />
+
+        <Button
+            android:id="@+id/btnStartNavigation"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="START NAVIGATION"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp" />
+
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="BACK"
+            android:textSize="20sp" />
+
+    </LinearLayout>
+</ScrollView>

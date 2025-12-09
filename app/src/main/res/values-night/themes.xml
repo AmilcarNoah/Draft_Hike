@@ -1,0 +1,21 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.BenchFinder" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your dark theme here. -->
+<!--         <item name="colorPrimary">@color/my_dark_primary</item> -->
+    </style>
+    <!-- Dark Mode Colors -->
+    <color name="background_color">#121212</color> <!-- Dark background -->
+    <color name="primary_color">#388E3C</color> <!-- Slightly lighter green -->
+    <color name="primary_light">#1B5E20</color>
+    <color name="primary_dark">#81C784</color>
+
+    <color name="text_primary">#FFFFFF</color> <!-- White text for dark background -->
+    <color name="text_secondary">#B0B0B0</color>
+
+    <color name="emergency_red">#EF5350</color>
+
+    <!-- Gray Scale for Dark Mode -->
+    <color name="gray_light">#424242</color>
+    <color name="gray_200">#303030</color>
+</resources>

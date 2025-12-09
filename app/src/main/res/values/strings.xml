@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BenchFinder</string>
+    <string name="start_hike">Start Hike</string>
+    <string name="search_trails">Search Trails</string>
+    <string name="find_benches">Find Benches</string>
+    <string name="emergency_call">Emergency Call</string>
+    <string name="settings">Settings</string>
+    <string name="trails_with_benches">Trails with Benches</string>
+    <string name="search">Search...</string>
+    <string name="voice_guidance">Voice Guidance</string>
+    <string name="text_size">Text Size</string>
+    <string name="contrast_mode">Contrast Mode</string>
+    <string name="download_offline">Download offline bench data</string>
+    <string name="about_the_app">About the App</string>
+    <string name="small">Small</string>
+    <string name="medium">Medium</string>
+    <string name="large">Large</string>
+
+
+</resources>
