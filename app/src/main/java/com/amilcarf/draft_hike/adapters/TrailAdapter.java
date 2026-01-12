@@ -173,5 +173,7 @@ public class TrailAdapter extends RecyclerView.Adapter<TrailAdapter.TrailViewHol
             trailStatus.setBackgroundResource(statusBg);
             trailStatus.setTextColor(statusTextColor);
         }
+
+
     }
 }

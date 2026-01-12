@@ -54,6 +54,7 @@
                     android:layout_weight="1"
                     android:hint="Search trails..."
                     android:textSize="16sp"
+                    android:textColor="@color/text_primary"
                     android:background="@null"
                     android:padding="4dp"
                     android:imeOptions="actionSearch" />
@@ -83,17 +84,18 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- RecyclerView for Trails -->
+
+    <!-- Empty State -->
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewTrails"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="120dp"
         android:clipToPadding="false"
         android:padding="8dp"
         android:scrollbars="vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <!-- Empty State -->
     <LinearLayout
         android:id="@+id/emptyStateLayout"
         android:layout_width="match_parent"

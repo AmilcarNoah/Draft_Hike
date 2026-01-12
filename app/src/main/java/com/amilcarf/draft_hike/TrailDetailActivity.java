@@ -6,6 +6,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 public class TrailDetailActivity extends AppCompatActivity {
 
@@ -29,8 +30,7 @@ public class TrailDetailActivity extends AppCompatActivity {
         TextView tvBenches = findViewById(R.id.tvBenches);
         TextView tvDifficulty = findViewById(R.id.tvDifficulty);
         TextView tvDescription = findViewById(R.id.tvDescription);
-        Button btnStartNavigation = findViewById(R.id.btnStartNavigation);
-        Button btnBack = findViewById(R.id.btnBack);
+//        Button btnBack = findViewById(R.id.btnBack);
 
         // Configuration for trail data
         if (trailName != null) {
@@ -48,25 +48,19 @@ public class TrailDetailActivity extends AppCompatActivity {
             tvDescription.setText("Description: " + description);
         }
 
-        // Button listeners
-        if (btnStartNavigation != null) {
-            btnStartNavigation.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Toast.makeText(TrailDetailActivity.this,
-                            "Starting navigation for " + trailName,
-                            Toast.LENGTH_SHORT).show();
-                }
-            });
+        // For the Back toolbar
+        setupToolbar();
+    }
+
+    private void setupToolbar() {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
 
-        if (btnBack != null) {
-            btnBack.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    finish(); // Close activity
-                }
-            });
-        }
+        toolbar.setNavigationOnClickListener(v -> onBackPressed());
     }
+
 }

@@ -37,11 +37,13 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,9 +53,9 @@ public class TrailsListActivity extends AppCompatActivity {
     private static final String TAG = "TrailsListActivity";
     private static final String PREFS_NAME = "TrailsPrefs";
     private static final String LAST_FETCH_TIME = "last_fetch_time";
-    private static final long CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+    private static final long CACHE_DURATION = 30 * 60 * 1000; // 30 minutes- for efficiency rather than loading everytime
 
-    // Location permission request code
+    // Location permissions
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 
     private RecyclerView recyclerViewTrails;
@@ -80,9 +82,11 @@ public class TrailsListActivity extends AppCompatActivity {
     private boolean isFetchingLocation = false;
 
     // Default location (used as fallback)---Necessary at the moment!!!!
-    private double defaultLatitude = 40.7829; // Central Park, NYC
-    private double defaultLongitude = -73.9654;
-    private double searchRadius = 3000; // 3km radius
+    private double defaultLatitude = 51.02; // Dresden
+    private double defaultLongitude = 13.72;
+
+
+    private double searchRadius = 500; // 500m radius
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -147,14 +151,14 @@ public class TrailsListActivity extends AppCompatActivity {
             }
         });
 
-        // Show loading animation
+        // loading animation
         loadingProgressBar.setVisibility(View.VISIBLE);
         recyclerViewTrails.setVisibility(View.GONE);
         emptyStateLayout.setVisibility(View.GONE);
 
-        // Update empty state messages
+        // loading screen messages
         emptyStateText.setText("Finding trails near you...");
-        emptyStateSubtext.setText("Searching for hiking trails with benches");
+        emptyStateSubtext.setText("Searching for hiking trails...");
 
         // Check location permission and load data
         checkLocationPermissionAndLoad();
@@ -189,7 +193,7 @@ public class TrailsListActivity extends AppCompatActivity {
 
         recyclerViewTrails.setAdapter(trailAdapter);
     }
-
+    //maybe this is not necessary
     private void setupSearch() {
         searchEditText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -252,7 +256,7 @@ public class TrailsListActivity extends AppCompatActivity {
             } else {
                 locationPermissionGranted = false;
                 showToast("Location permission denied. Using sample trails.");
-                loadSampleData();
+//                loadSampleData();
             }
         }
     }
@@ -296,14 +300,14 @@ public class TrailsListActivity extends AppCompatActivity {
                         isFetchingLocation = false;
                         Log.e(TAG, "Failed to get last location", e);
                         showToast("Could not get location. Using sample trails.");
-                        loadSampleData();
+//                        loadSampleData();
                     });
 
         } catch (SecurityException e) {
             isFetchingLocation = false;
             Log.e(TAG, "SecurityException when requesting location", e);
             showToast("Location permission required.");
-            loadSampleData();
+//            loadSampleData();
         }
     }
 
@@ -321,7 +325,7 @@ public class TrailsListActivity extends AppCompatActivity {
 
                 if (locationResult == null) {
                     showToast("Could not get current location. Using sample trails.");
-                    loadSampleData();
+//                    loadSampleData();
                     return;
                 }
 
@@ -341,7 +345,7 @@ public class TrailsListActivity extends AppCompatActivity {
                 }
 
                 showToast("Could not get current location. Using sample trails.");
-                loadSampleData();
+//                loadSampleData();
             }
         };
 
@@ -352,10 +356,10 @@ public class TrailsListActivity extends AppCompatActivity {
             isFetchingLocation = false;
             Log.e(TAG, "SecurityException when requesting location updates", e);
             showToast("Location permission required.");
-            loadSampleData();
+//            loadSampleData();
         }
     }
-
+    // requires more testing; concern with the loading of the locations...
     private void loadTrailsWithLocation(double latitude, double longitude) {
         Log.d(TAG, "Loading trails for location: " + latitude + ", " + longitude);
 
@@ -382,7 +386,7 @@ public class TrailsListActivity extends AppCompatActivity {
                 if (trails.isEmpty()) {
                     // Increase search radius and try again; Recommendation !!!!
                     double largerRadius = searchRadius * 2;
-                    showToast("No trails found within " + (searchRadius/1000) + "km. Searching " + (largerRadius/1000) + "km...");
+                    showToast("No trails found within " + (searchRadius/500) + "meters. Searching " + (largerRadius/1000) + "km...");
 
                     osmTrails = osmDataFetcher.fetchTrailsNearLocation(latitude, longitude, largerRadius);
                     if (osmTrails != null && !osmTrails.isEmpty()) {
@@ -395,8 +399,8 @@ public class TrailsListActivity extends AppCompatActivity {
                     loadingProgressBar.setVisibility(View.GONE);
 
                     if (finalTrails.isEmpty()) {
-                        loadSampleData();
-                        showToast("No trails found nearby. Using sample trails.");
+//                        loadSampleData();
+                        showToast("No trails found nearby.");
                     } else {
                         allTrails.clear();
                         allTrails.addAll(finalTrails);
@@ -416,7 +420,7 @@ public class TrailsListActivity extends AppCompatActivity {
                 Log.e(TAG, "Error loading trails from OSM", e);
                 new Handler(Looper.getMainLooper()).post(() -> {
                     loadingProgressBar.setVisibility(View.GONE);
-                    loadSampleData();
+//                    loadSampleData();
                     showToast("Cannot connect to trail database. Using sample trails.");
                 });
             }
@@ -427,24 +431,24 @@ public class TrailsListActivity extends AppCompatActivity {
                                                double userLat, double userLon) {
         List<Trail> trails = new ArrayList<>();
 
-        // Process each trail
-        for (int i = 0; i < Math.min(osmTrails.size(), 10); i++) { // Limit to 10 trails
+        for (int i = 0; i < Math.min(osmTrails.size(), 10); i++) {
             OSMWay osmWay = osmTrails.get(i);
 
             try {
                 // Calculate trail length
                 double distanceKm = calculateTrailLength(osmWay);
-                if (distanceKm < 0.1) continue; // Skip very short trails
+                if (distanceKm < 0.1) continue;
 
                 // Estimate duration
                 int durationMinutes = (int) ((distanceKm / 5.0) * 60);
                 if (durationMinutes < 1) durationMinutes = 5;
-
                 String duration = durationMinutes + " min";
 
-                // Count benches (simplified)
-                int benchCount = osmBenches != null ? Math.min(osmBenches.size() / 5, 8) : 0;
-                if (benchCount < 1) benchCount = 2;
+                // COunt benches
+                int benchCount = 0;
+                if (osmBenches != null) {
+                    benchCount = countBenchesNearTrail(osmWay, osmBenches, 100); // 100m radius reasonable for context
+                }
 
                 // Get trail name
                 String name = osmWay.getTag("name");
@@ -454,24 +458,43 @@ public class TrailsListActivity extends AppCompatActivity {
 
                 // Get difficulty
                 String difficulty = getDifficultyFromTags(osmWay);
-
-                // Get status
                 String status = "Open";
-
-                // Create description
                 String description = generateTrailDescription(osmWay);
 
-                // Create Trail object
+                // Trail geom
+                List<OSMNode> wayNodes = osmWay.getNodes();
+                List<LatLng> coordinates = new ArrayList<>();
+                double startLat = 0, startLng = 0, endLat = 0, endLng = 0;
+
+                if (wayNodes != null && !wayNodes.isEmpty()) {
+                    // Convert OSMNodes to LatLng
+                    for (OSMNode node : wayNodes) {
+                        LatLng latLng = new LatLng(node.getLatitude(), node.getLongitude());
+                        coordinates.add(latLng);
+                    }
+
+                    // Set start and end points
+                    startLat = wayNodes.get(0).getLatitude();
+                    startLng = wayNodes.get(0).getLongitude();
+                    endLat = wayNodes.get(wayNodes.size() - 1).getLatitude();
+                    endLng = wayNodes.get(wayNodes.size() - 1).getLongitude();
+                }
+
+                // trail geo
                 Trail trail = new Trail(
                         String.valueOf(osmWay.getId()),
                         name,
                         Math.round(distanceKm * 10.0) / 10.0,
                         duration,
-                        benchCount,
+                        benchCount,  //bench count
                         difficulty,
                         status,
                         description,
-                        false
+                        false,  // isFavorite
+                        coordinates,
+                        null,   // polyline (can encode later if needed)
+                        startLat, startLng,
+                        endLat, endLng
                 );
 
                 trails.add(trail);
@@ -483,30 +506,87 @@ public class TrailsListActivity extends AppCompatActivity {
 
         return trails;
     }
+    //need mod based on segment rather than nodes....
+    private int countBenchesNearTrail(OSMWay trail, List<OSMNode> allBenches, double radiusMeters) {
+        if (allBenches == null || allBenches.isEmpty()) {
+            return 0;
+        }
 
-    private void loadSampleData() {
-        allTrails.clear();
+        int benchCount = 0;
+        List<OSMNode> trailNodes = trail.getNodes();
 
-        // Add sample trails
-        allTrails.add(new Trail("1", "Central Park Loop", 6.1, "2 hours", 12,
-                "Easy", "Open", "Scenic loop around Central Park with multiple resting benches and water fountains.", false));
-        allTrails.add(new Trail("2", "Riverside Path", 3.8, "1.5 hours", 8,
-                "Medium", "Open", "A beautiful riverside path with several benches and viewpoints.", true));
-        allTrails.add(new Trail("3", "Forest Trail", 2.1, "45 min", 5,
-                "Easy", "Open", "Peaceful trail through the forest with benches along the way.", false));
-        allTrails.add(new Trail("4", "Mountain View Trail", 4.5, "2 hours", 7,
-                "Hard", "Open", "Challenging trail with breathtaking mountain views and rest spots.", false));
-        allTrails.add(new Trail("5", "Lake Shore Walk", 0.8, "15 min", 3,
-                "Easy", "Open", "Short walk around the lake with accessible benches.", true));
+        if (trailNodes == null || trailNodes.isEmpty()) {
+            return 0;
+        }
 
-        filteredTrails.clear();
-        filteredTrails.addAll(allTrails);
-        trailAdapter.updateData(filteredTrails);
+        // Check each bench against each trail node
+        for (OSMNode bench : allBenches) {
+            double benchLat = bench.getLatitude();
+            double benchLon = bench.getLongitude();
 
-        loadingProgressBar.setVisibility(View.GONE);
-        recyclerViewTrails.setVisibility(View.VISIBLE);
-        emptyStateLayout.setVisibility(View.GONE);
+            // Check if bench is near any point on the trail
+            for (OSMNode trailNode : trailNodes) {
+                double trailLat = trailNode.getLatitude();
+                double trailLon = trailNode.getLongitude();
+
+                float[] results = new float[1];
+                Location.distanceBetween(
+                        benchLat, benchLon,
+                        trailLat, trailLon,
+                        results
+                );
+
+                if (results[0] <= radiusMeters) {
+                    benchCount++;
+                    break; // Count this bench only once
+                }
+            }
+        }
+
+        return benchCount;
     }
+
+//    private void loadSampleData() {
+//        allTrails.clear();
+//
+//        // Sample coordinates for Central Park Loop
+//        List<LatLng> centralParkCoords = Arrays.asList(
+//                new LatLng(40.7829, -73.9654),
+//                new LatLng(40.7828, -73.9660),
+//                new LatLng(40.7820, -73.9665),
+//                new LatLng(40.7815, -73.9670),
+//                new LatLng(40.7829, -73.9654) // loop back
+//        );
+//
+//        // Create sample trail WITH geometry
+//        Trail centralPark = new Trail(
+//                "1",
+//                "Central Park Loop",
+//                6.1,
+//                "2 hours",
+//                12,
+//                "Easy",
+//                "Open",
+//                "Scenic loop around Central Park with multiple resting benches and water fountains.",
+//                false,
+//                centralParkCoords,
+//                null,
+//                40.7829, -73.9654,  // start
+//                40.7829, -73.9654   // end (loop)
+//        );
+//
+//        allTrails.add(centralPark);
+//
+//        // Add other sample trails similarly...
+//
+//        filteredTrails.clear();
+//        filteredTrails.addAll(allTrails);
+//        trailAdapter.updateData(filteredTrails);
+//
+//        loadingProgressBar.setVisibility(View.GONE);
+//        recyclerViewTrails.setVisibility(View.VISIBLE);
+//        emptyStateLayout.setVisibility(View.GONE);
+//    }
 
     private double calculateTrailLength(OSMWay way) {
         List<OSMNode> nodes = way.getNodes();
@@ -637,11 +717,17 @@ public class TrailsListActivity extends AppCompatActivity {
 
     private void startTrailNavigation(Trail trail) {
         Intent intent = new Intent(this, NavigationActivity.class);
-        intent.putExtra("trail_id", trail.getId());
-        intent.putExtra("trail_name", trail.getName());
+        intent.putExtra("trail", trail); // Pass the entire trail object
+        intent.putExtra("from_trail_list", true);
+
+        // Pass user location if available
+        if (currentLocation != null) {
+            intent.putExtra("user_lat", currentLocation.getLatitude());
+            intent.putExtra("user_lon", currentLocation.getLongitude());
+        }
+
         startActivity(intent);
     }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();

@@ -1,23 +1,98 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center">
+    android:fitsSystemWindows="true">
 
-    <TextView
-        android:id="@+id/tvTrailName"
-        android:layout_width="wrap_content"
+    <!-- App Bar -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Navigation"
-        android:textSize="24sp"
-        android:textStyle="bold" />
+        android:fitsSystemWindows="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
 
-    <TextView
-        android:layout_width="wrap_content"
+
+        <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@color/primary_color"
+                app:titleTextColor="@android:color/white"
+                app:navigationIcon="?android:attr/homeAsUpIndicator"
+                app:navigationIconTint="@android:color/white"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- MapView -->
+    <com.google.android.gms.maps.MapView
+        android:id="@+id/map_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@id/app_bar"
+        app:layout_constraintBottom_toTopOf="@id/mab_start_navigation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Center Progress Bar -->
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!--    &lt;!&ndash; Center Map Button &ndash;&gt;-->
+    <!--    <com.google.android.material.floatingactionbutton.FloatingActionButton-->
+    <!--        android:id="@+id/fab_center_map"-->
+    <!--        android:layout_width="72dp"-->
+    <!--        android:layout_height="72dp"-->
+    <!--        android:layout_alignParentEnd="true"-->
+    <!--        android:layout_marginEnd="32dp"-->
+    <!--        android:layout_marginBottom="28dp"-->
+    <!--        android:layout_above="@id/fab_start_navigation"-->
+    <!--        app:srcCompat="@android:drawable/ic_menu_mylocation"-->
+    <!--        app:backgroundTint="@color/primary_color"-->
+    <!--        android:contentDescription="Center map on my current location" />-
+
+
+        <!- Start / Stop Navigation Button -->
+
+<!--    <com.google.android.material.floatingactionbutton.FloatingActionButton-->
+<!--        android:id="@+id/fab_toggle_benches"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_gravity="bottom|end"-->
+<!--        android:layout_margin="16dp"-->
+<!--        android:src="@drawable/ic_bench"-->
+<!--        app:backgroundTint="@color/design_default_color_secondary"-->
+<!--        app:tint="@android:color/white"-->
+<!--        tools:layout_editor_absoluteX="275dp"-->
+<!--        tools:layout_editor_absoluteY="104dp" />-->
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/mab_start_navigation"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="This is where navigation instructions will be displayed."
-        android:textSize="16sp"
-        android:layout_marginTop="16dp" />
+        android:text="Start Navigation"
+        android:textAllCaps="false"
+        android:textColor="@android:color/white"
+        app:backgroundTint="@color/primary_color"
+        app:icon="@android:drawable/ic_media_play"
+        app:iconGravity="textStart"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:background="@color/background_color"/>
 
-</LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

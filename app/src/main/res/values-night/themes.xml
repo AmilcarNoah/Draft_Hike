@@ -1,8 +1,10 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Theme.BenchFinder" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
 <!--         <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <!-- Status bar -->
+<!--        <item name="android:statusBarColor">@color/primary_color</item>-->
+<!--        <item name="android:windowLightStatusBar">false</item>-->
     </style>
     <!-- Dark Mode Colors -->
     <color name="background_color">#121212</color> <!-- Dark background -->
@@ -13,6 +15,7 @@
     <color name="text_primary">#FFFFFF</color> <!-- White text for dark background -->
     <color name="text_secondary">#B0B0B0</color>
 
+<!--    For emergency call-->
     <color name="emergency_red">#EF5350</color>
 
     <!-- Gray Scale for Dark Mode -->

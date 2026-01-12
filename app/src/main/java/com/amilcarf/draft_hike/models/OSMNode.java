@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class OSMNode {
+    public double lat;
+    public double lon;
     private long id;
     private double latitude;
     private double longitude;

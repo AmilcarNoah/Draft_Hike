@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.firebase.firestore)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -79,8 +80,19 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
     implementation("com.google.code.gson:gson:2.10.1")
 
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
+
+// For runtime permissions
+    implementation("androidx.activity:activity:1.8.0")
+    implementation("androidx.fragment:fragment:1.6.1")
+
+    implementation("com.google.android.material:material:1.10.0")
 
 
+    // Optional for better map styling
+    implementation("com.google.maps.android:android-maps-utils:3.5.3")
 
+    //parsing
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
 
 }

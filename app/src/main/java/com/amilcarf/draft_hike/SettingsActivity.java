@@ -19,7 +19,7 @@ public class SettingsActivity extends AppCompatActivity {
         RadioGroup radioGroupTextSize = findViewById(R.id.radioGroupTextSize);
         Switch switchContrastMode = findViewById(R.id.switchContrastMode);
         Button btnDownload = findViewById(R.id.btnDownload);
-        Button btnBack = findViewById(R.id.btnBack);
+//        Button btnBack = findViewById(R.id.btnBack);
 
         // Set up listeners for views that exist
         if (switchVoiceGuidance != null) {
@@ -64,10 +64,10 @@ public class SettingsActivity extends AppCompatActivity {
         // Or add a toast where it would be
         Toast.makeText(this, "Emergency contact feature available soon", Toast.LENGTH_SHORT).show();
 
-        if (btnBack != null) {
-            btnBack.setOnClickListener(v -> {
-                finish(); // Close the settings activity and go back
-            });
-        }
+//        if (btnBack != null) {
+//            btnBack.setOnClickListener(v -> {
+//                finish(); // Close the settings activity and go back
+//            });
+//        }
     }
 }

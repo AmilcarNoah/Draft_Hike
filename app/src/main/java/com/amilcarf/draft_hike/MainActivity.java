@@ -8,6 +8,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -202,15 +204,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startTrailNavigation(Trail trail) {
-        // Start navigation for the selected trail, how can we improve thsi??
-        Intent intent = new Intent(this, NavigationActivity.class);
-        intent.putExtra("trail_id", trail.getId());
+        Intent intent = new Intent(this, com.amilcarf.draft_hike.NavigationActivity.class);
+
+        // Use the trail's ID as the OSM ID
+        intent.putExtra("trail_osm_id", trail.getId()); // This should work now
         intent.putExtra("trail_name", trail.getName());
         startActivity(intent);
 
-        android.widget.Toast.makeText(this,
+        Toast.makeText(this,
                 "Starting navigation for " + trail.getName(),
-                android.widget.Toast.LENGTH_SHORT).show();
+                Toast.LENGTH_SHORT).show();
     }
 
     private void openMapWithBenches() {
@@ -220,32 +223,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void makeEmergencyCall() {
-        // Show emergency options dialog
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Emergency Assistance");
-        builder.setMessage("Choose an emergency option:");
 
         builder.setPositiveButton("Call Emergency Services",
                 (dialog, which) -> {
                     Intent callIntent = new Intent(Intent.ACTION_DIAL);
+                    //Germany emergency services are 112 apparently
                     callIntent.setData(android.net.Uri.parse("tel:112"));
                     startActivity(callIntent);
                 });
 
-        builder.setNegativeButton("Send Location to Contact",
-                (dialog, which) -> {
-                    sendEmergencyLocation();
-                });
-
         builder.setNeutralButton("Cancel", null);
         builder.show();
-    }
-
-    private void sendEmergencyLocation() {
-        // Send location to emergency contact
-        android.widget.Toast.makeText(this,
-                "Location sent to emergency contact",
-                android.widget.Toast.LENGTH_SHORT).show();
     }
 
     private void openSettingsActivity() {
