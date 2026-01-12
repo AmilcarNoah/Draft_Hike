@@ -67,18 +67,6 @@
 
         <!- Start / Stop Navigation Button -->
 
-<!--    <com.google.android.material.floatingactionbutton.FloatingActionButton-->
-<!--        android:id="@+id/fab_toggle_benches"-->
-<!--        android:layout_width="wrap_content"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_gravity="bottom|end"-->
-<!--        android:layout_margin="16dp"-->
-<!--        android:src="@drawable/ic_bench"-->
-<!--        app:backgroundTint="@color/design_default_color_secondary"-->
-<!--        app:tint="@android:color/white"-->
-<!--        tools:layout_editor_absoluteX="275dp"-->
-<!--        tools:layout_editor_absoluteY="104dp" />-->
-
     <com.google.android.material.button.MaterialButton
         android:id="@+id/mab_start_navigation"
         android:layout_width="match_parent"

@@ -11,7 +11,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
-import android.view.Window;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -20,17 +19,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.WindowCompat;
 
+import com.amilcarf.draft_hike.location.LocationManager;
 import com.amilcarf.draft_hike.models.OSMNode;
 import com.amilcarf.draft_hike.models.OSMWay;
 import com.amilcarf.draft_hike.models.Trail;
 import com.amilcarf.draft_hike.osm.OSMDataFetcher;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
@@ -48,27 +42,24 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.maps.model.RoundCap;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
-public class NavigationActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class NavigationActivity extends AppCompatActivity implements OnMapReadyCallback,
+        LocationManager.LocationListener {  // Implement your custom LocationListener
 
     // Map components
     private MapView mapView;
     private GoogleMap googleMap;
 
-    // Location services
-    private FusedLocationProviderClient fusedLocationClient;
-    private LocationCallback locationCallback;
+    // Location services - using custom LocationManager
+    private LocationManager locationManager;
     private Location currentLocation;
 
     // Trail data
@@ -94,9 +85,6 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
     // UI Components
     private MaterialButton mabStartNavigation;
-    private FloatingActionButton fabCenterMap;
-    private FloatingActionButton fabToggleBenches;
-
     private ProgressBar progressBar;
     private Toolbar toolbar;
 
@@ -144,8 +132,6 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         // Initialize components
         toolbar = findViewById(R.id.toolbar);
         mabStartNavigation = findViewById(R.id.mab_start_navigation);
-//        fabCenterMap = findViewById(R.id.fab_center_map);
-//        fabToggleBenches = findViewById(R.id.fab_toggle_benches);
         progressBar = findViewById(R.id.progress_bar);
 
         // Setup toolbar - for Back/Return
@@ -153,7 +139,6 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowHomeEnabled(true);
-
         }
 
         toolbar.setNavigationOnClickListener(new View.OnClickListener() {
@@ -163,7 +148,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             }
         });
 
-        // check for TrailsListActivity
+        // Check for trail from TrailsListActivity
         Trail selectedTrail = getIntent().getParcelableExtra("trail");
         fromTrailList = getIntent().getBooleanExtra("from_trail_list", false);
 
@@ -186,7 +171,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
                 Log.d(TAG, "Preloaded trail has " + osmTrail.points.size() + " points");
 
-                //  trail name
+                // Set trail name
                 if (getSupportActionBar() != null) {
                     getSupportActionBar().setTitle(selectedTrail.getName());
                 }
@@ -201,12 +186,39 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         // Initialize map
         initializeMap(savedInstanceState);
 
-        // Initialize location services
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        // Initialize custom LocationManager (singleton)
+        locationManager = LocationManager.getInstance(this);
+        locationManager.addLocationListener(this);
 
         setupListeners();
 
         checkLocationPermissions();
+    }
+
+    @Override
+    public void onLocationReceived(Location location) {
+        currentLocation = location;
+        updateUserLocation(location);
+
+        // Only load trails from OSM if we don't have a preloaded trail
+        if (osmTrails.isEmpty() && !isNavigationActive && !hasPreloadedTrail) {
+            loadTrailsFromOSM(location);
+        }
+
+        // Load benches for preloaded trail if we haven't already
+        if (hasPreloadedTrail && osmBenches.isEmpty() && showBenches && !isNavigationActive) {
+            fetchBenchesAsync(location);
+        }
+
+        if (isNavigationActive) {
+            updateNavigation(location);
+        }
+    }
+
+    @Override
+    public void onLocationError(String error) {
+        Log.e(TAG, "Location error: " + error);
+        Toast.makeText(this, "Location error: " + error, Toast.LENGTH_SHORT).show();
     }
 
     private OSMTrail convertTrailToOSMTrail(Trail trail) {
@@ -215,7 +227,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             osmTrail.id = trail.getId();
             osmTrail.name = trail.getName();
 
-            // distance from trail ( km to meters)
+            // Convert distance from trail (km to meters)
             osmTrail.distance = trail.getDistance() * 1000;
 
             // Get coordinates from trail
@@ -232,7 +244,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
                         " with " + osmTrail.points.size() + " points, " +
                         osmTrail.distance + " meters");
             } else {
-                // If no coordinates, try to use start/end points; still not sure if ideal...
+                // If no coordinates, try to use start/end points
                 osmTrail.points = new ArrayList<>();
                 if (trail.getStartLat() != 0 && trail.getStartLng() != 0) {
                     osmTrail.points.add(new LatLng(trail.getStartLat(), trail.getStartLng()));
@@ -277,10 +289,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         // Map settings
         configureMap();
 
-        // location tracking
-        setupLocationTracking();
-
-        //  preloaded trail from TrailsListActivity
+        // Handle preloaded trail from TrailsListActivity
         if (hasPreloadedTrail && preloadedTrail != null) {
             Log.d(TAG, "Displaying preloaded trail on map ready");
 
@@ -306,7 +315,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
                 mabStartNavigation.setEnabled(true);
             }
         } else {
-            // Original behavior: start location updates and fetch trails-- performance wise , might be slow
+            // Start location updates if no preloaded trail
             startLocationUpdates();
         }
     }
@@ -317,17 +326,16 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             return;
         }
 
-        // UiSettings from GoogleMap
+        // Get UiSettings from GoogleMap
         UiSettings uiSettings = googleMap.getUiSettings();
 
-        //  map settings
+        // Configure map settings
         uiSettings.setCompassEnabled(true);
         uiSettings.setMapToolbarEnabled(true);
         uiSettings.setMyLocationButtonEnabled(true);
-        uiSettings.setMapToolbarEnabled(true);
         uiSettings.setZoomControlsEnabled(true);
 
-        // Enable my location layer; permissions*** req
+        // Enable my location layer (permissions required)
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             try {
@@ -337,7 +345,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             }
         }
 
-        // initial camera position without trail
+        // Set initial camera position if no trail
         if (!hasPreloadedTrail) {
             CameraPosition initialPosition = new CameraPosition.Builder()
                     .target(new LatLng(0, 0))
@@ -347,56 +355,33 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         }
     }
 
-    private void setupLocationTracking() {
-        locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult locationResult) {
-                Location location = locationResult.getLastLocation();
-                if (location != null) {
-                    currentLocation = location;
-                    updateUserLocation(location);
-
-                    // Only load trails from OSM if we don't have a preloaded trail
-                    if (osmTrails.isEmpty() && !isNavigationActive && !hasPreloadedTrail) {
-                        loadTrailsFromOSM(location);
-                    }
-
-                    // Load benches for preloaded trail if we haven't already
-                    if (hasPreloadedTrail && osmBenches.isEmpty() && showBenches && !isNavigationActive) {
-                        fetchBenchesAsync(location);
-                    }
-
-                    if (isNavigationActive) {
-                        updateNavigation(location);
-                    }
-                }
-            }
-        };
-    }
-
-    @SuppressLint("MissingPermission")
     private void startLocationUpdates() {
-        if (hasLocationPermissions()) {
-            LocationRequest locationRequest = LocationRequest.create();
-            locationRequest.setInterval(10000);
-            locationRequest.setFastestInterval(5000);
-            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        if (locationManager.hasLocationPermissions()) {
+            // Start with LOW_FREQUENCY for discovery
+            locationManager.setUpdateMode(LocationManager.UpdateMode.LOW_FREQUENCY);
+            locationManager.startLocationUpdates();
 
-            fusedLocationClient.requestLocationUpdates(
-                    locationRequest,
-                    locationCallback,
-                    Looper.getMainLooper()
-            );
-
-            // Last location to center map
+            // Get last location to center map
             if (!hasPreloadedTrail) {
-                fusedLocationClient.getLastLocation()
-                        .addOnSuccessListener(this, location -> {
-                            if (location != null) {
-                                currentLocation = location;
-                                centerMapOnLocation(location);
-                            }
-                        });
+                Location lastLocation = locationManager.getCurrentLocation();
+                if (lastLocation != null && locationManager.isLocationFresh()) {
+                    currentLocation = lastLocation;
+                    centerMapOnLocation(lastLocation);
+                } else {
+                    // Request single location if no fresh location available
+                    locationManager.getSingleLocation(new LocationManager.LocationListener() {
+                        @Override
+                        public void onLocationReceived(Location location) {
+                            currentLocation = location;
+                            centerMapOnLocation(location);
+                        }
+
+                        @Override
+                        public void onLocationError(String error) {
+                            Log.e(TAG, "Error getting single location: " + error);
+                        }
+                    });
+                }
             }
         }
     }
@@ -629,15 +614,15 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
     private double getLonFromOSMNode(OSMNode node) {
         try {
-            // different getter methods
+            // Try different getter methods
             Class<?> nodeClass = node.getClass();
 
-            // getLongitude()
+            // Try getLongitude()
             try {
                 Method method = nodeClass.getMethod("getLongitude");
                 return (double) method.invoke(node);
             } catch (Exception e) {
-                // getLon() or getLng()
+                // Try getLon() or getLng()
                 try {
                     Method method = nodeClass.getMethod("getLon");
                     return (double) method.invoke(node);
@@ -742,42 +727,42 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             return;
         }
 
-        // necessary to clear previous trail display
+        // Clear previous trail display
         clearPreviousTrail();
 
-        // update UI with trail info
+        // Update UI with trail info
         updateTrailInfo(trail);
 
-        // trail polyline
+        // Draw trail polyline
         drawTrailPolyline(trail);
 
-        // trail markers
+        // Add trail markers
         addTrailMarkers(trail);
 
-        // center map on trail,if not already done
+        // Center map on trail if not already done
         if (!hasPreloadedTrail) {
             centerMapOnTrail();
         }
 
-        //  total distance
+        // Calculate total distance
         totalDistance = (float) trail.distance;
         remainingDistance = totalDistance;
         updateDistanceDisplay();
 
-        //  start nav
+        // Enable start navigation button
         if (mabStartNavigation != null) {
             mabStartNavigation.setEnabled(true);
         }
     }
 
     private void clearPreviousTrail() {
-        // remove previous polyline
+        // Remove previous polyline
         if (selectedTrailPolyline != null) {
             selectedTrailPolyline.remove();
             selectedTrailPolyline = null;
         }
 
-        // remove previous markers
+        // Remove previous markers
         if (trailStartMarker != null) {
             trailStartMarker.remove();
             trailStartMarker = null;
@@ -801,7 +786,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         try {
             Log.d(TAG, "Drawing polyline with " + trailPoints.size() + " points");
 
-            //polyline display options
+            // Create polyline display options
             PolylineOptions polylineOptions = new PolylineOptions()
                     .addAll(trailPoints)
                     .color(getTrailColor(trail.difficulty))
@@ -810,7 +795,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
                     .startCap(new RoundCap())
                     .endCap(new RoundCap());
 
-            // add polyline to map
+            // Add polyline to map
             selectedTrailPolyline = googleMap.addPolyline(polylineOptions);
 
             if (selectedTrailPolyline != null) {
@@ -827,7 +812,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
     private void addTrailMarkers(OSMTrail trail) {
         try {
-            // add start marker
+            // Add start marker
             if (!trailPoints.isEmpty()) {
                 LatLng startPoint = trailPoints.get(0);
                 trailStartMarker = googleMap.addMarker(new MarkerOptions()
@@ -836,7 +821,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
                         .snippet("Distance: " + String.format("%.1f", trail.distance) + "m")
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
 
-                // add end marker
+                // Add end marker
                 LatLng endPoint = trailPoints.get(trailPoints.size() - 1);
                 trailEndMarker = googleMap.addMarker(new MarkerOptions()
                         .position(endPoint)
@@ -936,7 +921,8 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         String info = trail.name + "\n" +
                 "Distance: " + String.format("%.1f", trail.distance) + "m\n" +
                 "Difficulty: " + trail.difficulty;
-        // USe name of the trail
+
+        // Use name of the trail
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(trail.name);
             getSupportActionBar().setSubtitle("Distance: " + String.format("%.1f", trail.distance) + "m | Difficulty: " + trail.difficulty);
@@ -962,7 +948,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
                     bounds.include(point);
                 }
 
-                // Also include user location if available
+                // Include user location if available
                 if (currentLocation != null) {
                     bounds.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
                 }
@@ -990,7 +976,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
     }
 
     private void setupListeners() {
-        // listeners
+        // Navigation button listener
         if (mabStartNavigation != null) {
             mabStartNavigation.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -1004,47 +990,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             });
         }
 
-        if (fabCenterMap != null) {
-            fabCenterMap.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    if (currentLocation != null) {
-                        centerMapOnLocation(currentLocation);
-                    } else if (preloadedUserLat != 0 && preloadedUserLon != 0) {
-                        //with preloaded user location
-                        LatLng latLng = new LatLng(preloadedUserLat, preloadedUserLon);
-                        if (googleMap != null) {
-                            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14f));
-                        }
-                    } else {
-                        Toast.makeText(NavigationActivity.this, "No location available", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-        }
-
-        if (fabToggleBenches != null) {
-            fabToggleBenches.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    showBenches = !showBenches;
-                    if (showBenches) {
-                        if (!osmBenches.isEmpty()) {
-                            displayBenches();
-                        } else if (currentLocation != null) {
-                            // Fetch benches if we haven't already
-                            fetchBenchesAsync(currentLocation);
-                        }
-                        Toast.makeText(NavigationActivity.this, "Benches shown", Toast.LENGTH_SHORT).show();
-                    } else {
-                        clearBenchMarkers();
-                        Toast.makeText(NavigationActivity.this, "Benches hidden", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-        }
-
-        // map click listener to show trail details
+        // Map click listener to show trail details
         if (googleMap != null) {
             googleMap.setOnPolylineClickListener(new GoogleMap.OnPolylineClickListener() {
                 @Override
@@ -1086,26 +1032,26 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
     private void updateNavigation(Location currentLocation) {
         if (currentTrailIndex >= trailPoints.size() - 1) {
-            //trail completed
+            // Trail completed
             Toast.makeText(this, "Trail completed! Well done!", Toast.LENGTH_LONG).show();
             stopNavigation();
             return;
         }
 
-        //nearest point on trail
+        // Find nearest point on trail
         int nearestIndex = findNearestTrailPoint(currentLocation);
 
         if (nearestIndex > currentTrailIndex) {
             currentTrailIndex = nearestIndex;
 
-            // update current position marker on trail
+            // Update current position marker on trail
             updateCurrentTrailMarker();
 
-            //calculate remaining distance
+            // Calculate remaining distance
             remainingDistance = calculateRemainingDistance(currentTrailIndex);
             updateDistanceDisplay();
 
-            //provide navigation hints
+            // Provide navigation hints
             provideNavigationHint();
         }
     }
@@ -1155,7 +1101,6 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
-    // Find benches Near
     private float calculateTotalDistance(List<LatLng> points) {
         float total = 0f;
 
@@ -1207,7 +1152,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         };
     }
 
-    // Distance to trail
+    // Distance from point to trail segment
     private float distancePointToSegment(LatLng point, LatLng segStart, LatLng segEnd) {
         float[] results = new float[1];
 
@@ -1229,7 +1174,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         );
         float segmentLength = results[0];
 
-        // find projection
+        // Find projection
         double u = (((point.latitude - segStart.latitude) * (segEnd.latitude - segStart.latitude)) +
                 ((point.longitude - segStart.longitude) * (segEnd.longitude - segStart.longitude))) /
                 (segmentLength * segmentLength);
@@ -1273,48 +1218,65 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             return nearTrailBenches;
         }
 
+        // Create a map of valid bench locations to avoid repeated getLat/getLon calls
+        Map<OSMNode, LatLng> validBenchLocations = new HashMap<>();
         for (OSMNode bench : allBenches) {
             try {
                 double benchLat = getLatFromOSMNode(bench);
                 double benchLon = getLonFromOSMNode(bench);
 
-                if (benchLat == 0 && benchLon == 0) continue;
-
-                LatLng benchLocation = new LatLng(benchLat, benchLon);
-
-                // Find minimum distance to trail
-                float minDistance = Float.MAX_VALUE;
-
-                // Check distance to each trail point
-                for (LatLng trailPoint : trailPoints) {
-                    float[] results = new float[1];
-                    Location.distanceBetween(
-                            benchLat, benchLon,
-                            trailPoint.latitude, trailPoint.longitude,
-                            results
-                    );
-                    minDistance = Math.min(minDistance, results[0]);
+                if (benchLat != 0 || benchLon != 0) {
+                    validBenchLocations.put(bench, new LatLng(benchLat, benchLon));
                 }
-
-                // Check distance to each trail segment
-                for (int i = 0; i < trailPoints.size() - 1; i++) {
-                    float segmentDistance = distancePointToSegment(
-                            benchLocation,
-                            trailPoints.get(i),
-                            trailPoints.get(i + 1)
-                    );
-                    minDistance = Math.min(minDistance, segmentDistance);
-                }
-
-                // If within 100 meters, include this bench
-                if (minDistance <= maxDistanceMeters) {
-                    nearTrailBenches.add(bench);
-                    Log.d(TAG, "Bench " + bench.getId() + " is " +
-                            String.format("%.1f", minDistance) + "m from trail");
-                }
-
             } catch (Exception e) {
-                Log.e(TAG, "Error processing bench: " + e.getMessage());
+                Log.e(TAG, "Error getting bench location: " + e.getMessage());
+            }
+        }
+
+        // Early exit if no valid benches
+        if (validBenchLocations.isEmpty()) {
+            return nearTrailBenches;
+        }
+
+        // Process each bench
+        for (Map.Entry<OSMNode, LatLng> entry : validBenchLocations.entrySet()) {
+            OSMNode bench = entry.getKey();
+            LatLng benchLocation = entry.getValue();
+
+            double benchLat = benchLocation.latitude;
+            double benchLon = benchLocation.longitude;
+
+            float minDistance = Float.MAX_VALUE;
+
+            // Check distance to each trail point
+            float[] results = new float[1];
+            for (LatLng trailPoint : trailPoints) {
+                // Quick bounding box check first
+                double latDiff = Math.abs(benchLat - trailPoint.latitude);
+                double lonDiff = Math.abs(benchLon - trailPoint.longitude);
+
+                if (latDiff * 111000 > maxDistanceMeters || lonDiff * 111000 * Math.cos(Math.toRadians(benchLat)) > maxDistanceMeters) {
+                    continue;
+                }
+
+                Location.distanceBetween(benchLat, benchLon, trailPoint.latitude, trailPoint.longitude,
+                        results
+                );
+
+                if (results[0] < minDistance) {
+                    minDistance = results[0];
+
+                    // Early exit if within max distance
+                    if (minDistance <= maxDistanceMeters) {
+                        break;
+                    }
+                }
+            }
+
+            if (minDistance <= maxDistanceMeters) {
+                nearTrailBenches.add(bench);
+                Log.d(TAG, "Bench " + bench.getId() + " is " +
+                        String.format("%.1f", minDistance) + "m from trail");
             }
         }
 
@@ -1413,6 +1375,11 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         currentTrailIndex = 0;
         remainingDistance = totalDistance;
 
+        // Change update mode to HIGH_FREQUENCY for navigation; ensures constant updates 4 navigation
+        if (locationManager != null) {
+            locationManager.setUpdateMode(LocationManager.UpdateMode.HIGH_FREQUENCY);
+        }
+
         // Change icon to stop navigation
         if (mabStartNavigation != null) {
             mabStartNavigation.setIconResource(android.R.drawable.ic_media_pause);
@@ -1427,6 +1394,12 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
     private void stopNavigation() {
         isNavigationActive = false;
+
+        // Change update mode back to LOW_FREQUENCY; no more need for frequent updates
+        if (locationManager != null) {
+            locationManager.setUpdateMode(LocationManager.UpdateMode.LOW_FREQUENCY);
+        }
+
         // Change icon back to start navigation
         if (mabStartNavigation != null) {
             mabStartNavigation.setIconResource(android.R.drawable.ic_media_play);
@@ -1440,7 +1413,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         Toast.makeText(this, "Navigation stopped", Toast.LENGTH_SHORT).show();
     }
 
-    // Helper method to fetch benches asynchronously
+    // Helper method to fetch benches asynchronously-(async deprecated;might need to change?)
     private void fetchBenchesAsync(Location location) {
         new AsyncTask<Location, Void, List<OSMNode>>() {
             @Override
@@ -1474,7 +1447,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             return;
         }
 
-        // Get bounding box expanded by 200m (to catch all benches within 100m; like a fallback**)
+        // Get bounding box expanded by 200m; along with pre-filter for improved performance
         double[] bbox = getTrailBoundingBox(preloadedTrail.points, 200f);
         if (bbox == null) return;
 
@@ -1532,7 +1505,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
     // Permission handling
     private void checkLocationPermissions() {
-        if (!hasLocationPermissions()) {
+        if (!locationManager.hasLocationPermissions()) {
             ActivityCompat.requestPermissions(
                     this,
                     new String[]{
@@ -1547,17 +1520,6 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
                 startLocationUpdates();
             }
         }
-    }
-
-    private boolean hasLocationPermissions() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -1608,8 +1570,8 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
     protected void onStop() {
         super.onStop();
         mapView.onStop();
-        if (fusedLocationClient != null && locationCallback != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
+        if (locationManager != null) {
+            locationManager.stopLocationUpdates();
         }
     }
 
@@ -1617,6 +1579,9 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
+        if (locationManager != null) {
+            locationManager.removeLocationListener(this);
+        }
     }
 
     @Override

@@ -121,7 +121,7 @@ public class OSMDataFetcher {
                         Math.min(radius, 1500), lat, lon
                 ),
 
-                // Simplified query 2: Just paths
+                // Simplified query 2: Just paths; reasonable for the elderly around urban areas
                 String.format(Locale.US,
                         "[out:json][timeout:20];" +
                                 "way[\"highway\"=\"path\"](around:%.0f,%.6f,%.6f);" +
