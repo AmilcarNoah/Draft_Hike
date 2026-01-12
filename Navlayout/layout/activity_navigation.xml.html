@@ -1,0 +1,191 @@
+<html>
+<head>
+<title>activity_navigation.xml</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #d5b778;}
+.s1 { color: #bcbec4;}
+.s2 { color: #6aab73;}
+.s3 { color: #bcbec4;}
+.s4 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+activity_navigation.xml</font>
+</center></td></tr></table>
+<pre><span class="s0">&lt;?</span><span class="s1">xml version</span><span class="s2">=&quot;1.0&quot; </span><span class="s1">encoding</span><span class="s2">=&quot;utf-8&quot;</span><span class="s0">?&gt;</span>
+<span class="s0">&lt;androidx.constraintlayout.widget.ConstraintLayout</span>
+    <span class="s1">xmlns:android</span><span class="s2">=&quot;http://schemas.android.com/apk/res/android&quot;</span>
+    <span class="s1">xmlns:app</span><span class="s2">=&quot;http://schemas.android.com/apk/res-auto&quot;</span>
+    <span class="s1">xmlns:tools</span><span class="s2">=&quot;http://schemas.android.com/tools&quot;</span>
+    <span class="s1">android:layout_width</span><span class="s2">=&quot;match_parent&quot;</span>
+    <span class="s1">android:layout_height</span><span class="s2">=&quot;match_parent&quot;</span>
+    <span class="s1">android:background</span><span class="s2">=&quot;@android:color/white&quot;</span><span class="s0">&gt;</span>
+
+    <span class="s4">&lt;!-- Map View --&gt;</span>
+    <span class="s0">&lt;com.google.android.gms.maps.MapView</span>
+        <span class="s1">android:id</span><span class="s2">=&quot;@+id/mapView&quot;</span>
+        <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+        <span class="s1">android:layout_height</span><span class="s2">=&quot;0dp&quot;</span>
+        <span class="s1">app:layout_constraintBottom_toBottomOf</span><span class="s2">=&quot;parent&quot;</span>
+        <span class="s1">app:layout_constraintEnd_toEndOf</span><span class="s2">=&quot;parent&quot;</span>
+        <span class="s1">app:layout_constraintStart_toStartOf</span><span class="s2">=&quot;parent&quot;</span>
+        <span class="s1">app:layout_constraintTop_toTopOf</span><span class="s2">=&quot;parent&quot; </span><span class="s0">/&gt;</span>
+
+    <span class="s4">&lt;!-- Trail Info Card --&gt;</span>
+    <span class="s0">&lt;androidx.cardview.widget.CardView</span>
+        <span class="s1">android:id</span><span class="s2">=&quot;@+id/trailInfoCard&quot;</span>
+        <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+        <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+        <span class="s1">android:layout_margin</span><span class="s2">=&quot;16dp&quot;</span>
+        <span class="s1">app:cardCornerRadius</span><span class="s2">=&quot;8dp&quot;</span>
+        <span class="s1">app:cardElevation</span><span class="s2">=&quot;8dp&quot;</span>
+        <span class="s1">app:layout_constraintEnd_toEndOf</span><span class="s2">=&quot;parent&quot;</span>
+        <span class="s1">app:layout_constraintStart_toStartOf</span><span class="s2">=&quot;parent&quot;</span>
+        <span class="s1">app:layout_constraintTop_toTopOf</span><span class="s2">=&quot;parent&quot;</span><span class="s0">&gt;</span>
+
+        <span class="s0">&lt;LinearLayout</span>
+            <span class="s1">android:layout_width</span><span class="s2">=&quot;match_parent&quot;</span>
+            <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+            <span class="s1">android:orientation</span><span class="s2">=&quot;vertical&quot;</span>
+            <span class="s1">android:padding</span><span class="s2">=&quot;16dp&quot;</span><span class="s0">&gt;</span>
+
+            <span class="s0">&lt;TextView</span>
+                <span class="s1">android:id</span><span class="s2">=&quot;@+id/trailNameTextView&quot;</span>
+                <span class="s1">android:layout_width</span><span class="s2">=&quot;match_parent&quot;</span>
+                <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                <span class="s1">android:text</span><span class="s2">=&quot;Trail Name&quot;</span>
+                <span class="s1">android:textSize</span><span class="s2">=&quot;20sp&quot;</span>
+                <span class="s1">android:textStyle</span><span class="s2">=&quot;bold&quot;</span>
+                <span class="s1">android:textColor</span><span class="s2">=&quot;@android:color/black&quot; </span><span class="s0">/&gt;</span>
+
+            <span class="s0">&lt;LinearLayout</span>
+                <span class="s1">android:layout_width</span><span class="s2">=&quot;match_parent&quot;</span>
+                <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                <span class="s1">android:orientation</span><span class="s2">=&quot;horizontal&quot;</span>
+                <span class="s1">android:layout_marginTop</span><span class="s2">=&quot;8dp&quot;</span><span class="s0">&gt;</span>
+
+                <span class="s0">&lt;TextView</span>
+                    <span class="s1">android:id</span><span class="s2">=&quot;@+id/trailDistanceTextView&quot;</span>
+                    <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+                    <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                    <span class="s1">android:layout_weight</span><span class="s2">=&quot;1&quot;</span>
+                    <span class="s1">android:text</span><span class="s2">=&quot;Distance: 0.0 km&quot;</span>
+                    <span class="s1">android:textSize</span><span class="s2">=&quot;14sp&quot;</span>
+                    <span class="s1">android:textColor</span><span class="s2">=&quot;@android:color/darker_gray&quot; </span><span class="s0">/&gt;</span>
+
+                <span class="s0">&lt;TextView</span>
+                    <span class="s1">android:id</span><span class="s2">=&quot;@+id/trailDurationTextView&quot;</span>
+                    <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+                    <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                    <span class="s1">android:layout_weight</span><span class="s2">=&quot;1&quot;</span>
+                    <span class="s1">android:text</span><span class="s2">=&quot;Duration: 0h&quot;</span>
+                    <span class="s1">android:textSize</span><span class="s2">=&quot;14sp&quot;</span>
+                    <span class="s1">android:textColor</span><span class="s2">=&quot;@android:color/darker_gray&quot; </span><span class="s0">/&gt;</span>
+            <span class="s0">&lt;/LinearLayout&gt;</span>
+
+            <span class="s0">&lt;LinearLayout</span>
+                <span class="s1">android:layout_width</span><span class="s2">=&quot;match_parent&quot;</span>
+                <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                <span class="s1">android:orientation</span><span class="s2">=&quot;horizontal&quot;</span>
+                <span class="s1">android:layout_marginTop</span><span class="s2">=&quot;4dp&quot;</span><span class="s0">&gt;</span>
+
+                <span class="s0">&lt;TextView</span>
+                    <span class="s1">android:id</span><span class="s2">=&quot;@+id/trailDifficultyTextView&quot;</span>
+                    <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+                    <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                    <span class="s1">android:layout_weight</span><span class="s2">=&quot;1&quot;</span>
+                    <span class="s1">android:text</span><span class="s2">=&quot;Difficulty: Medium&quot;</span>
+                    <span class="s1">android:textSize</span><span class="s2">=&quot;14sp&quot;</span>
+                    <span class="s1">android:textColor</span><span class="s2">=&quot;@android:color/darker_gray&quot; </span><span class="s0">/&gt;</span>
+
+                <span class="s0">&lt;TextView</span>
+                    <span class="s1">android:id</span><span class="s2">=&quot;@+id/trailStatusTextView&quot;</span>
+                    <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+                    <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                    <span class="s1">android:layout_weight</span><span class="s2">=&quot;1&quot;</span>
+                    <span class="s1">android:text</span><span class="s2">=&quot;Status: Open&quot;</span>
+                    <span class="s1">android:textSize</span><span class="s2">=&quot;14sp&quot;</span>
+                    <span class="s1">android:textColor</span><span class="s2">=&quot;@android:color/darker_gray&quot; </span><span class="s0">/&gt;</span>
+            <span class="s0">&lt;/LinearLayout&gt;</span>
+
+            <span class="s0">&lt;TextView</span>
+                <span class="s1">android:id</span><span class="s2">=&quot;@+id/navigationStatusTextView&quot;</span>
+                <span class="s1">android:layout_width</span><span class="s2">=&quot;match_parent&quot;</span>
+                <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                <span class="s1">android:layout_marginTop</span><span class="s2">=&quot;12dp&quot;</span>
+                <span class="s1">android:text</span><span class="s2">=&quot;Ready to navigate&quot;</span>
+                <span class="s1">android:textSize</span><span class="s2">=&quot;16sp&quot;</span>
+                <span class="s1">android:textStyle</span><span class="s2">=&quot;bold&quot;</span>
+                <span class="s1">android:textColor</span><span class="s2">=&quot;@color/primary_color&quot; </span><span class="s0">/&gt;</span>
+
+            <span class="s0">&lt;TextView</span>
+                <span class="s1">android:id</span><span class="s2">=&quot;@+id/distanceToEndTextView&quot;</span>
+                <span class="s1">android:layout_width</span><span class="s2">=&quot;match_parent&quot;</span>
+                <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                <span class="s1">android:layout_marginTop</span><span class="s2">=&quot;4dp&quot;</span>
+                <span class="s1">android:text</span><span class="s2">=&quot;Distance to end: --&quot;</span>
+                <span class="s1">android:textSize</span><span class="s2">=&quot;14sp&quot;</span>
+                <span class="s1">android:textColor</span><span class="s2">=&quot;@android:color/darker_gray&quot; </span><span class="s0">/&gt;</span>
+        <span class="s0">&lt;/LinearLayout&gt;</span>
+    <span class="s0">&lt;/androidx.cardview.widget.CardView&gt;</span>
+
+    <span class="s4">&lt;!-- Navigation Controls Card --&gt;</span>
+    <span class="s0">&lt;androidx.cardview.widget.CardView</span>
+        <span class="s1">android:id</span><span class="s2">=&quot;@+id/controlsCard&quot;</span>
+        <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+        <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+        <span class="s1">android:layout_margin</span><span class="s2">=&quot;16dp&quot;</span>
+        <span class="s1">app:cardCornerRadius</span><span class="s2">=&quot;8dp&quot;</span>
+        <span class="s1">app:cardElevation</span><span class="s2">=&quot;8dp&quot;</span>
+        <span class="s1">app:layout_constraintBottom_toBottomOf</span><span class="s2">=&quot;parent&quot;</span>
+        <span class="s1">app:layout_constraintEnd_toEndOf</span><span class="s2">=&quot;parent&quot;</span>
+        <span class="s1">app:layout_constraintStart_toStartOf</span><span class="s2">=&quot;parent&quot;</span><span class="s0">&gt;</span>
+
+        <span class="s0">&lt;LinearLayout</span>
+            <span class="s1">android:layout_width</span><span class="s2">=&quot;match_parent&quot;</span>
+            <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+            <span class="s1">android:orientation</span><span class="s2">=&quot;horizontal&quot;</span>
+            <span class="s1">android:padding</span><span class="s2">=&quot;16dp&quot;</span><span class="s0">&gt;</span>
+
+            <span class="s0">&lt;Button</span>
+                <span class="s1">android:id</span><span class="s2">=&quot;@+id/startNavigationButton&quot;</span>
+                <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+                <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                <span class="s1">android:layout_weight</span><span class="s2">=&quot;1&quot;</span>
+                <span class="s1">android:layout_marginEnd</span><span class="s2">=&quot;8dp&quot;</span>
+                <span class="s1">android:text</span><span class="s2">=&quot;Start Navigation&quot;</span>
+                <span class="s1">android:backgroundTint</span><span class="s2">=&quot;@color/teal_200&quot;</span>
+                <span class="s1">android:textColor</span><span class="s2">=&quot;@android:color/white&quot; </span><span class="s0">/&gt;</span>
+
+            <span class="s0">&lt;Button</span>
+                <span class="s1">android:id</span><span class="s2">=&quot;@+id/endNavigationButton&quot;</span>
+                <span class="s1">android:layout_width</span><span class="s2">=&quot;0dp&quot;</span>
+                <span class="s1">android:layout_height</span><span class="s2">=&quot;wrap_content&quot;</span>
+                <span class="s1">android:layout_weight</span><span class="s2">=&quot;1&quot;</span>
+                <span class="s1">android:layout_marginStart</span><span class="s2">=&quot;8dp&quot;</span>
+                <span class="s1">android:text</span><span class="s2">=&quot;End Navigation&quot;</span>
+                <span class="s1">android:backgroundTint</span><span class="s2">=&quot;@color/teal_700&quot;</span>
+                <span class="s1">android:textColor</span><span class="s2">=&quot;@android:color/white&quot;</span>
+                <span class="s1">android:enabled</span><span class="s2">=&quot;false&quot; </span><span class="s0">/&gt;</span>
+        <span class="s0">&lt;/LinearLayout&gt;</span>
+    <span class="s0">&lt;/androidx.cardview.widget.CardView&gt;</span>
+
+    <span class="s4">&lt;!-- My Location Button --&gt;</span>
+    <span class="s0">&lt;ImageButton</span>
+        <span class="s1">android:id</span><span class="s2">=&quot;@+id/myLocationButton&quot;</span>
+        <span class="s1">android:layout_width</span><span class="s2">=&quot;56dp&quot;</span>
+        <span class="s1">android:layout_height</span><span class="s2">=&quot;56dp&quot;</span>
+        <span class="s1">android:layout_margin</span><span class="s2">=&quot;16dp&quot;</span>
+        <span class="s1">android:background</span><span class="s2">=&quot;@drawable/ic_menu_mark&quot;</span>
+        <span class="s1">android:src</span><span class="s2">=&quot;@drawable/ic_user_location&quot;</span>
+        <span class="s1">android:elevation</span><span class="s2">=&quot;8dp&quot;</span>
+        <span class="s1">app:layout_constraintBottom_toTopOf</span><span class="s2">=&quot;@id/controlsCard&quot;</span>
+        <span class="s1">app:layout_constraintEnd_toEndOf</span><span class="s2">=&quot;parent&quot; </span><span class="s0">/&gt;</span>
+
+<span class="s0">&lt;/androidx.constraintlayout.widget.ConstraintLayout&gt;</span></pre>
+</body>
+</html>
