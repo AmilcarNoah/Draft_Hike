@@ -19,6 +19,4 @@
     <color name="emergency_red">#EF5350</color>
 
     <!-- Gray Scale for Dark Mode -->
-    <color name="gray_light">#424242</color>
-    <color name="gray_200">#303030</color>
 </resources>

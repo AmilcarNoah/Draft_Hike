@@ -1,30 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.amilcarf.draft_hike">
-
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- Tracking/Trail -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /> <!-- Tracking/Trail -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
     <uses-feature android:name="android.hardware.location.gps" />
     <uses-feature android:name="android.hardware.location" />
     <uses-feature android:name="android.hardware.location.network" />
+
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-
-
-    <!-- Optional: For emergency call feature; NOT SURE if we include it -->
-    <!--
-    <uses-permission android:name="android.permission.CALL_PHONE" />
-    -->
 
     <application
         android:allowBackup="true"
@@ -33,66 +26,51 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.BenchFinder">
-
+        <activity
+            android:name=".MainActivity2"
+            android:exported="false"
+            android:label="@string/title_activity_main2"
+            android:theme="@style/Theme.BenchFinder" />
         <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
-           >
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <!-- Trails List Activity -->
+        </activity> <!-- Trails List Activity -->
         <activity
             android:name=".TrailsListActivity"
             android:label="@string/trails_with_benches"
-            android:parentActivityName=".MainActivity" />
-
-        <!-- Trail Detail Activity -->
+            android:parentActivityName=".MainActivity" /> <!-- Trail Detail Activity -->
         <activity
             android:name=".TrailDetailActivity"
             android:label="Trail Details"
-            android:parentActivityName=".TrailsListActivity" />
-
-        <!-- Navigation Activity -->
+            android:parentActivityName=".TrailsListActivity" /> <!-- Navigation Activity -->
         <activity
             android:name=".NavigationActivity"
             android:label="Trail Navigation"
-            android:parentActivityName=".TrailsListActivity" />
-
-        <!-- Map Activity -->
+            android:parentActivityName=".TrailsListActivity" /> <!-- Map Activity -->
         <activity
             android:name=".MapActivity"
             android:label="Find Benches"
-            android:parentActivityName=".MainActivity" />
-
-        <!-- OSM Configuration -->
+            android:parentActivityName=".MainActivity" /> <!-- OSM Configuration -->
         <meta-data
             android:name="osmdroid.basePath"
             android:value="/storage/emulated/0/osmdroid" />
         <meta-data
             android:name="osmdroid.cachePath"
-            android:value="/storage/emulated/0/osmdroid/cache" />
-
-
-        <!-- Google API Info; Research on Security for this!!! -->
+            android:value="/storage/emulated/0/osmdroid/cache" /> <!-- Google API Info; Research on Security for this!!! -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="${MAPS_API_KEY}" />
-
-
-        <!-- Settings  -->
+            android:value="${MAPS_API_KEY}" /> <!-- Settings -->
         <activity
             android:name=".SettingsActivity"
             android:label="@string/settings"
             android:parentActivityName=".MainActivity" />
-
-
-
     </application>
 
 </manifest>

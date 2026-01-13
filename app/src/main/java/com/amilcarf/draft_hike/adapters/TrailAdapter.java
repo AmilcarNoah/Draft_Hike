@@ -138,11 +138,15 @@ public class TrailAdapter extends RecyclerView.Adapter<TrailAdapter.TrailViewHol
             trailStatus.setText(trail.getStatus());
             trailDescription.setText(trail.getDescription());
 
-            // Favorite icon
+            // Fav icon
             int favoriteIconRes = trail.isFavorite() ?
                     android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off;;
             favoriteIcon.setImageResource(favoriteIconRes);
+            int favoriteColor = trail.isFavorite() ?
+                    itemView.getContext().getResources().getColor(R.color.favorite_yellow) :
+                    itemView.getContext().getResources().getColor(R.color.favorite_gray);
 
+            favoriteIcon.setColorFilter(favoriteColor, android.graphics.PorterDuff.Mode.SRC_IN);
             // Difficulty background
             String difficulty = trail.getDifficulty().toLowerCase();
             int difficultyBg;

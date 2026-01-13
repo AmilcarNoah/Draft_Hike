@@ -1,5 +1,6 @@
 package com.amilcarf.draft_hike;
 
+// Imports
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
@@ -52,13 +53,13 @@ import java.util.Locale;
 import java.util.Map;
 
 public class NavigationActivity extends AppCompatActivity implements OnMapReadyCallback,
-        LocationManager.LocationListener {  // Implement your custom LocationListener
+        LocationManager.LocationListener {
 
     // Map components
     private MapView mapView;
     private GoogleMap googleMap;
 
-    // Location services - using custom LocationManager
+    // Location services
     private LocationManager locationManager;
     private Location currentLocation;
 
@@ -99,6 +100,24 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
     private boolean fromTrailList = false;
     private double preloadedUserLat = 0;
     private double preloadedUserLon = 0;
+
+    // Distance calculation improvements
+    private Handler navigationUpdateHandler = new Handler(Looper.getMainLooper());
+    private Runnable navigationUpdateTask;
+    private long lastLocationUpdateTime = 0;
+    private ProjectionResult lastProjection;
+
+    // Projection result class for distance calculation
+    private class ProjectionResult {
+        int segmentIndex;
+        LatLng projectedPoint;
+        float distanceToTrail;
+
+        ProjectionResult(int segmentIndex, LatLng projectedPoint) {
+            this.segmentIndex = segmentIndex;
+            this.projectedPoint = projectedPoint;
+        }
+    }
 
     // OSM Trail class to store trail information
     public static class OSMTrail {
@@ -148,6 +167,31 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             }
         });
 
+        // Initialize navigation update task
+        navigationUpdateTask = new Runnable() {
+            @Override
+            public void run() {
+                if (isNavigationActive && currentLocation != null) {
+                    // Even if location hasn't updated, estimate movement based on last known speed
+                    estimateProgressiveDistance();
+
+                    // Force UI update
+                    updateDistanceDisplay();
+
+                    // Smooth marker animation if we have projection
+                    if (currentTrailMarker != null && lastProjection != null) {
+                        // Use the last projection for smooth updates
+                        currentTrailMarker.setPosition(lastProjection.projectedPoint);
+                    }
+                }
+
+                // Continue updating every second
+                if (isNavigationActive) {
+                    navigationUpdateHandler.postDelayed(this, 1000);
+                }
+            }
+        };
+
         // Check for trail from TrailsListActivity
         Trail selectedTrail = getIntent().getParcelableExtra("trail");
         fromTrailList = getIntent().getBooleanExtra("from_trail_list", false);
@@ -186,7 +230,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         // Initialize map
         initializeMap(savedInstanceState);
 
-        // Initialize custom LocationManager (singleton)
+        // Initialize LocationManager
         locationManager = LocationManager.getInstance(this);
         locationManager.addLocationListener(this);
 
@@ -197,8 +241,13 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
     @Override
     public void onLocationReceived(Location location) {
+        lastLocationUpdateTime = System.currentTimeMillis();
         currentLocation = location;
         updateUserLocation(location);
+
+        // Debug log for location updates
+        Log.d(TAG, "Location update: " + location.getLatitude() + ", " + location.getLongitude() +
+                " | Accuracy: " + location.getAccuracy() + "m | Navigation active: " + isNavigationActive);
 
         // Only load trails from OSM if we don't have a preloaded trail
         if (osmTrails.isEmpty() && !isNavigationActive && !hasPreloadedTrail) {
@@ -357,7 +406,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
 
     private void startLocationUpdates() {
         if (locationManager.hasLocationPermissions()) {
-            // Start with LOW_FREQUENCY for discovery
+            // Start with LOW_FREQUENCY for discovery; performance wise context
             locationManager.setUpdateMode(LocationManager.UpdateMode.LOW_FREQUENCY);
             locationManager.startLocationUpdates();
 
@@ -1030,6 +1079,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         }
     }
 
+    // For Nav updates, tracking
     private void updateNavigation(Location currentLocation) {
         if (currentTrailIndex >= trailPoints.size() - 1) {
             // Trail completed
@@ -1038,54 +1088,159 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             return;
         }
 
-        // Find nearest point on trail
-        int nearestIndex = findNearestTrailPoint(currentLocation);
+        // Find the closest point on the trail (projected onto segments)
+        ProjectionResult projection = findClosestPointOnTrail(currentLocation);
 
-        if (nearestIndex > currentTrailIndex) {
-            currentTrailIndex = nearestIndex;
-
-            // Update current position marker on trail
-            updateCurrentTrailMarker();
-
-            // Calculate remaining distance
-            remainingDistance = calculateRemainingDistance(currentTrailIndex);
-            updateDistanceDisplay();
-
-            // Provide navigation hints
-            provideNavigationHint();
+        if (projection == null) {
+            Log.w(TAG, "No projection found for current location");
+            return;
         }
+
+        // Store for continuous updates
+        lastProjection = projection;
+
+        // Update progress along the trail
+        updateTrailProgress(projection);
+
+        // Calculate remaining distance accurately
+        remainingDistance = calculateAccurateRemainingDistance(
+                projection.segmentIndex,
+                projection.projectedPoint
+        );
+
+        // Update the display
+        updateDistanceDisplay();
+
+        // Update marker
+        updateCurrentTrailMarker(projection.projectedPoint);
+
+        // Provide hints every 10 seconds
+        if (System.currentTimeMillis() % 10000 < 500) {
+            provideNavigationHint(projection.segmentIndex);
+        }
+
+        // Debug log
+        debugDistanceCalculation(currentLocation, projection);
     }
 
-    private int findNearestTrailPoint(Location currentLocation) {
-        int nearestIndex = currentTrailIndex;
+    /**
+     * Closest point on any trail segment (not just vertices); at first vertices didnt worked as intended...
+     */
+    private ProjectionResult findClosestPointOnTrail(Location location) {
+        if (trailPoints == null || trailPoints.size() < 2) return null;
+
+        LatLng userPoint = new LatLng(location.getLatitude(), location.getLongitude());
         float minDistance = Float.MAX_VALUE;
+        int closestSegmentIndex = 0;
+        LatLng closestPoint = trailPoints.get(0);
 
-        for (int i = currentTrailIndex; i < trailPoints.size(); i++) {
-            Location trailLocation = new Location("");
-            trailLocation.setLatitude(trailPoints.get(i).latitude);
-            trailLocation.setLongitude(trailPoints.get(i).longitude);
+        // Check each segment of the trail
+        for (int i = 0; i < trailPoints.size() - 1; i++) {
+            LatLng segStart = trailPoints.get(i);
+            LatLng segEnd = trailPoints.get(i + 1);
 
-            float distance = currentLocation.distanceTo(trailLocation);
+            LatLng projection = projectPointOntoSegment(userPoint, segStart, segEnd);
+            float distance = distanceBetween(userPoint, projection);
+
             if (distance < minDistance) {
                 minDistance = distance;
-                nearestIndex = i;
+                closestSegmentIndex = i;
+                closestPoint = projection;
             }
         }
 
-        return nearestIndex;
+        ProjectionResult result = new ProjectionResult(closestSegmentIndex, closestPoint);
+        result.distanceToTrail = minDistance;
+        return result;
     }
 
-    private void updateCurrentTrailMarker() {
+    /**
+     * Projects a point onto a line segment
+     */
+    private LatLng projectPointOntoSegment(LatLng point, LatLng segStart, LatLng segEnd) {
+        // Vector A->P
+        double ax = point.longitude - segStart.longitude;
+        double ay = point.latitude - segStart.latitude;
+
+        // Vector A->B
+        double bx = segEnd.longitude - segStart.longitude;
+        double by = segEnd.latitude - segStart.latitude;
+
+        // Dot product
+        double dot = ax * bx + ay * by;
+        double lenSq = bx * bx + by * by;
+
+        // Parameter t (projection factor)
+        double t = Math.max(0, Math.min(1, dot / lenSq));
+
+        // Calculate projected point
+        double projLon = segStart.longitude + t * bx;
+        double projLat = segStart.latitude + t * by;
+
+        return new LatLng(projLat, projLon);
+    }
+
+    /**
+     * Calculates distance between two LatLng points
+     */
+    private float distanceBetween(LatLng point1, LatLng point2) {
+        float[] results = new float[1];
+        Location.distanceBetween(
+                point1.latitude, point1.longitude,
+                point2.latitude, point2.longitude,
+                results
+        );
+        return results[0];
+    }
+
+    private void updateTrailProgress(ProjectionResult projection) {
+        // index forward if current segment passed
+        if (projection.segmentIndex > currentTrailIndex) {
+            currentTrailIndex = projection.segmentIndex;
+            Log.d(TAG, "Progress: Moved to segment " + currentTrailIndex);
+        }
+        // move forward if near the end of current segment
+        else if (projection.segmentIndex == currentTrailIndex) {
+            LatLng currentSegEnd = trailPoints.get(currentTrailIndex + 1);
+            float distanceToEnd = distanceBetween(projection.projectedPoint, currentSegEnd);
+
+            // if within 10 meters of the segment end, move to next segment
+            if (distanceToEnd < 10 && currentTrailIndex < trailPoints.size() - 2) {
+                currentTrailIndex++;
+                Log.d(TAG, "Progress: Advanced to next segment " + currentTrailIndex);
+            }
+        }
+    }
+//2 phases: 1 distance transversed; 2 distance remaining ...
+    private float calculateAccurateRemainingDistance(int segmentIndex, LatLng currentPosition) {
+        if (segmentIndex >= trailPoints.size() - 1) return 0;
+
+        float remaining = 0f;
+
+        // 1. Distance from current position to end of current segment
+        LatLng segmentEnd = trailPoints.get(segmentIndex + 1);
+        remaining += distanceBetween(currentPosition, segmentEnd);
+
+        // 2. Distance from next point to end of trail
+        for (int i = segmentIndex + 1; i < trailPoints.size() - 1; i++) {
+            remaining += distanceBetween(trailPoints.get(i), trailPoints.get(i + 1));
+        }
+
+        return remaining;
+    }
+
+    private void updateCurrentTrailMarker(LatLng position) {
         if (currentTrailMarker != null) {
             currentTrailMarker.remove();
         }
 
-        if (currentTrailIndex < trailPoints.size()) {
-            currentTrailMarker = googleMap.addMarker(new MarkerOptions()
-                    .position(trailPoints.get(currentTrailIndex))
-                    .title("Current Position")
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)));
-        }
+        currentTrailMarker = googleMap.addMarker(new MarkerOptions()
+                .position(position)
+                .title("Your position on trail")
+                .snippet(String.format(Locale.getDefault(),
+                        "%.0f meters remaining", remainingDistance))
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                .anchor(0.5f, 0.5f));
     }
 
     private void updateCameraForNavigation(LatLng latLng) {
@@ -1150,65 +1305,6 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
                 maxLat + latBuffer,  // north
                 maxLon + lonBuffer   // east
         };
-    }
-
-    // Distance from point to trail segment
-    private float distancePointToSegment(LatLng point, LatLng segStart, LatLng segEnd) {
-        float[] results = new float[1];
-
-        // If segment start and end are the same point
-        if (segStart.equals(segEnd)) {
-            Location.distanceBetween(
-                    point.latitude, point.longitude,
-                    segStart.latitude, segStart.longitude,
-                    results
-            );
-            return results[0];
-        }
-
-        // Calculate distances
-        Location.distanceBetween(
-                segStart.latitude, segStart.longitude,
-                segEnd.latitude, segEnd.longitude,
-                results
-        );
-        float segmentLength = results[0];
-
-        // Find projection
-        double u = (((point.latitude - segStart.latitude) * (segEnd.latitude - segStart.latitude)) +
-                ((point.longitude - segStart.longitude) * (segEnd.longitude - segStart.longitude))) /
-                (segmentLength * segmentLength);
-
-        if (u < 0) {
-            // Closest to segStart
-            Location.distanceBetween(
-                    point.latitude, point.longitude,
-                    segStart.latitude, segStart.longitude,
-                    results
-            );
-            return results[0];
-        } else if (u > 1) {
-            // Closest to segEnd
-            Location.distanceBetween(
-                    point.latitude, point.longitude,
-                    segEnd.latitude, segEnd.longitude,
-                    results
-            );
-            return results[0];
-        } else {
-            // Closest to point on segment
-            LatLng projection = new LatLng(
-                    segStart.latitude + u * (segEnd.latitude - segStart.latitude),
-                    segStart.longitude + u * (segEnd.longitude - segStart.longitude)
-            );
-
-            Location.distanceBetween(
-                    point.latitude, point.longitude,
-                    projection.latitude, projection.longitude,
-                    results
-            );
-            return results[0];
-        }
     }
 
     private List<OSMNode> filterBenchesNearTrail(List<OSMNode> allBenches, List<LatLng> trailPoints, float maxDistanceMeters) {
@@ -1283,47 +1379,57 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         return nearTrailBenches;
     }
 
-    private float calculateRemainingDistance(int fromIndex) {
-        float remaining = 0f;
-
-        for (int i = fromIndex; i < trailPoints.size() - 1; i++) {
-            float[] results = new float[1];
-            Location.distanceBetween(
-                    trailPoints.get(i).latitude,
-                    trailPoints.get(i).longitude,
-                    trailPoints.get(i + 1).latitude,
-                    trailPoints.get(i + 1).longitude,
-                    results
-            );
-            remaining += results[0];
-        }
-
-        return remaining;
-    }
-
     private void updateDistanceDisplay() {
         float distanceKm = (remainingDistance / 1000);
         float totalKm = (totalDistance / 1000);
 
+        Log.d(TAG, "Distance Display - Remaining: " + remainingDistance +
+                "m (" + distanceKm + "km), Total: " + totalKm + "km");
+
         if (getSupportActionBar() != null) {
             getSupportActionBar().setSubtitle(
                     String.format(Locale.getDefault(),
-                            "Remaining Distance: %.1f km / Total: %.1f km", distanceKm, totalKm));
+                            "Remaining: %.1f km / Total: %.1f km", distanceKm, totalKm));
         }
     }
 
-    private void provideNavigationHint() {
-        if (currentTrailIndex < trailPoints.size() - 1) {
-            LatLng nextPoint = trailPoints.get(currentTrailIndex + 1);
+    private void provideNavigationHint(int currentSegment) {
+        if (currentSegment < 0 || currentSegment >= trailPoints.size() - 1) return;
 
-            // Calculate bearing
-            float bearing = calculateBearing(
-                    trailPoints.get(currentTrailIndex),
-                    nextPoint
-            );
+        LatLng currentPoint = trailPoints.get(currentSegment);
+        LatLng nextPoint = trailPoints.get(currentSegment + 1);
 
-            String direction = getDirectionFromBearing(bearing);
-            Toast.makeText(this, "Continue " + direction, Toast.LENGTH_SHORT).show();
+        // Calculate bearing to next point
+        float bearing = calculateBearing(currentPoint, nextPoint);
+        String direction = getDirectionFromBearing(bearing);
+
+        // Calculate distance to next point
+        float distanceToNext = distanceBetween(currentPoint, nextPoint);
+
+        String hint = String.format(Locale.getDefault(),
+                "Continue %s for %.0f meters", direction, distanceToNext);
+
+        // Show as toast or update UI
+        Toast.makeText(this, hint, Toast.LENGTH_SHORT).show();
+    }
+
+    private void estimateProgressiveDistance() {
+        if (currentLocation == null || lastProjection == null) return;
+
+        // If we have speed data, estimate distance traveled
+        if (currentLocation.hasSpeed() && currentLocation.getSpeed() > 0) {
+            // Speed in meters per second
+            float speedMps = currentLocation.getSpeed();
+
+            // Time since last actual location update (not this timer update)
+            long timeSinceLastLocation = System.currentTimeMillis() - lastLocationUpdateTime;
+            float estimatedDistanceMoved = speedMps * (timeSinceLastLocation / 1000f);
+
+            // Subtract from remaining distance
+            if (remainingDistance > estimatedDistanceMoved) {
+                remainingDistance -= estimatedDistanceMoved;
+                Log.d(TAG, "Estimated movement: " + estimatedDistanceMoved + "m at " + speedMps + "m/s");
+            }
         }
     }
 
@@ -1365,6 +1471,19 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         }
     }
 
+    private void debugDistanceCalculation(Location location, ProjectionResult projection) {
+        if (location == null || projection == null) return;
+
+        float accurateDist = calculateAccurateRemainingDistance(
+                projection.segmentIndex, projection.projectedPoint);
+
+        Log.d(TAG, String.format(Locale.getDefault(),
+                "User: %.6f, %.6f | Projection: %.6f, %.6f | Segment: %d | Remaining: %.0fm",
+                location.getLatitude(), location.getLongitude(),
+                projection.projectedPoint.latitude, projection.projectedPoint.longitude,
+                projection.segmentIndex, accurateDist));
+    }
+
     private void startNavigation() {
         if (trailPoints == null || trailPoints.isEmpty()) {
             Toast.makeText(this, "No trail loaded", Toast.LENGTH_SHORT).show();
@@ -1375,7 +1494,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         currentTrailIndex = 0;
         remainingDistance = totalDistance;
 
-        // Change update mode to HIGH_FREQUENCY for navigation; ensures constant updates 4 navigation
+        // Change update mode to HIGH_FREQUENCY for navigation
         if (locationManager != null) {
             locationManager.setUpdateMode(LocationManager.UpdateMode.HIGH_FREQUENCY);
         }
@@ -1385,17 +1504,30 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             mabStartNavigation.setIconResource(android.R.drawable.ic_media_pause);
         }
 
+        // Start continuous distance updates
+        navigationUpdateHandler.postDelayed(navigationUpdateTask, 1000);
+
+        // Initialize with current position
+        if (currentLocation != null) {
+            lastProjection = findClosestPointOnTrail(currentLocation);
+            if (lastProjection != null) {
+                remainingDistance = calculateAccurateRemainingDistance(
+                        lastProjection.segmentIndex,
+                        lastProjection.projectedPoint
+                );
+            }
+        }
+
         String trailName = osmTrails.get(currentTrailSelection).name;
         Toast.makeText(this, "Navigation started on " + trailName, Toast.LENGTH_SHORT).show();
 
-        updateCurrentTrailMarker();
         updateDistanceDisplay();
     }
 
     private void stopNavigation() {
         isNavigationActive = false;
 
-        // Change update mode back to LOW_FREQUENCY; no more need for frequent updates
+        // Change update mode back to LOW_FREQUENCY
         if (locationManager != null) {
             locationManager.setUpdateMode(LocationManager.UpdateMode.LOW_FREQUENCY);
         }
@@ -1405,6 +1537,9 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
             mabStartNavigation.setIconResource(android.R.drawable.ic_media_play);
         }
 
+        // Stop continuous distance updates
+        navigationUpdateHandler.removeCallbacks(navigationUpdateTask);
+
         if (currentTrailMarker != null) {
             currentTrailMarker.remove();
             currentTrailMarker = null;
@@ -1413,7 +1548,7 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
         Toast.makeText(this, "Navigation stopped", Toast.LENGTH_SHORT).show();
     }
 
-    // Helper method to fetch benches asynchronously-(async deprecated;might need to change?)
+    // Helper method to fetch benches asynchronously
     private void fetchBenchesAsync(Location location) {
         new AsyncTask<Location, Void, List<OSMNode>>() {
             @Override
@@ -1579,6 +1714,8 @@ public class NavigationActivity extends AppCompatActivity implements OnMapReadyC
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
+        // Stop any running handlers
+        navigationUpdateHandler.removeCallbacks(navigationUpdateTask);
         if (locationManager != null) {
             locationManager.removeLocationListener(this);
         }

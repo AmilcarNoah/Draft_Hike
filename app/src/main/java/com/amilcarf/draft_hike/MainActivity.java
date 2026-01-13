@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -15,10 +16,15 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.amilcarf.draft_hike.adapters.TrailAdapter;
+import com.amilcarf.draft_hike.database.TrailDatabaseHelper;
 import com.amilcarf.draft_hike.models.Trail;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,12 +33,16 @@ public class MainActivity extends AppCompatActivity {
     private List<Trail> trailList;
     private ProgressBar loadingProgressBar;
     private TextView emptyStateText;
+    private TrailDatabaseHelper databaseHelper;
 
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Initialize database helper
+        databaseHelper = new TrailDatabaseHelper(this);
 
         // Initialize toolbar
         View toolbar = findViewById(R.id.toolbar);
@@ -46,8 +56,8 @@ public class MainActivity extends AppCompatActivity {
         // Setup RecyclerView
         setupRecyclerView();
 
-        // Load trail data
-        loadTrails();
+        // Load trail data from database
+        loadTrailsFromDatabase();
 
         // Setup button click listeners
         setupButtons();
@@ -85,90 +95,107 @@ public class MainActivity extends AppCompatActivity {
         recyclerViewTrails.setAdapter(trailAdapter);
     }
 
-    private void loadTrails() {
+    private void loadTrailsFromDatabase() {
         // Show loading indicator
         loadingProgressBar.setVisibility(View.VISIBLE);
+        emptyStateText.setVisibility(View.GONE);
+        recyclerViewTrails.setVisibility(View.GONE);
 
-        // Simulate loading delay
-        new Handler().postDelayed(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        // Sample data; we then can design to our goals
-                        List<Trail> sampleTrails = new ArrayList<>();
-                        sampleTrails.add(new Trail("1", "Riverside Path", 1.2, "25 min", 5,
-                                "Easy", "Open", "Scenic riverside path with multiple resting benches and water fountains.", false));
-                        sampleTrails.add(new Trail("2", "Old Forest Loop", 3.8, "1.5 hours", 9,
-                                "Medium", "Open", "A longer trail through old forest with several benches and viewpoints.", true));
-                        sampleTrails.add(new Trail("3", "Lighthouse Route", 2.1, "45 min", 4,
-                                "Easy", "Open", "Coastal route leading to a historic lighthouse with benches along the way.", false));
-                        sampleTrails.add(new Trail("4", "Mountain View Trail", 4.5, "2 hours", 7,
-                                "Hard", "Open", "Challenging trail with breathtaking views and resting spots.", false));
-                        sampleTrails.add(new Trail("5", "Park Loop", 0.8, "15 min", 3,
-                                "Easy", "Open", "Short loop around the city park with accessible benches.", true));
+        // Use background thread for database operations
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
 
-                        // Update adapter
-                        trailAdapter.updateData(sampleTrails);
+        executor.execute(() -> {
+            try {
+                // Get trails from database
+                List<Trail> dbTrails = databaseHelper.getAllTrails();
 
-                        // Hide loading indicator
-                        loadingProgressBar.setVisibility(View.GONE);
+                handler.post(() -> {
+                    // Update UI on main thread
+                    if (dbTrails != null && !dbTrails.isEmpty()) {
+                        trailAdapter.updateData(dbTrails);
+                        recyclerViewTrails.setVisibility(View.VISIBLE);
+                        emptyStateText.setVisibility(View.GONE);
 
-                        // Show/hide empty state
-                        if (sampleTrails.isEmpty()) {
-                            emptyStateText.setVisibility(View.VISIBLE);
-                            recyclerViewTrails.setVisibility(View.GONE);
-                        } else {
-                            emptyStateText.setVisibility(View.GONE);
-                            recyclerViewTrails.setVisibility(View.VISIBLE);
-                        }
+                        // Optional: Show toast with count
+                        Toast.makeText(MainActivity.this,
+                                "Loaded " + dbTrails.size() + " trails",
+                                Toast.LENGTH_SHORT).show();
+                    } else {
+                        // No trails found
+                        emptyStateText.setText("No trails found in database");
+                        emptyStateText.setVisibility(View.VISIBLE);
+                        recyclerViewTrails.setVisibility(View.GONE);
                     }
-                }, 1500 // 1.5 second delay
-        );
+
+                    // Hide loading indicator
+                    loadingProgressBar.setVisibility(View.GONE);
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                handler.post(() -> {
+                    loadingProgressBar.setVisibility(View.GONE);
+                    emptyStateText.setText("Error loading trails: " + e.getMessage());
+                    emptyStateText.setVisibility(View.VISIBLE);
+                    recyclerViewTrails.setVisibility(View.GONE);
+
+                    Toast.makeText(MainActivity.this,
+                            "Database error: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+        });
     }
 
+    private void toggleFavorite(Trail trail, int position) {
+        // Toggle favorite status
+        trail.setFavorite(!trail.isFavorite());
+
+        // Update in database on background thread
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        executor.execute(() -> {
+            databaseHelper.updateFavoriteStatus(trail.getId(), trail.isFavorite());
+
+            handler.post(() -> {
+                // Update UI on main thread
+                trailAdapter.updateItem(position, trail);
+
+                String message = trail.isFavorite() ?
+                        "Added to favorites" : "Removed from favorites";
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Close database connection when activity is destroyed
+        if (databaseHelper != null) {
+            databaseHelper.close();
+        }
+    }
+
+    // Rest of your methods remain the same...
     private void setupButtons() {
         Button btnStartHike = findViewById(R.id.btnStartHike);
         View cardSearchTrails = findViewById(R.id.cardSearchTrails);
         View cardFindBenches = findViewById(R.id.cardFindBenches);
 
-        btnStartHike.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openTrailsListActivity();
-            }
-        });
-
-        cardSearchTrails.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openTrailsListActivity();
-            }
-        });
-
-        cardFindBenches.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openMapWithBenches();
-            }
-        });
+        btnStartHike.setOnClickListener(v -> openTrailsListActivity());
+        cardSearchTrails.setOnClickListener(v -> openTrailsListActivity());
+        cardFindBenches.setOnClickListener(v -> openMapWithBenches());
 
         // Emergency button
         View cardEmergency = findViewById(R.id.cardEmergency);
-        cardEmergency.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                makeEmergencyCall();
-            }
-        });
+        cardEmergency.setOnClickListener(v -> makeEmergencyCall());
 
         // Settings button
         View cardSettings = findViewById(R.id.cardSettings);
-        cardSettings.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openSettingsActivity();
-            }
-        });
+        cardSettings.setOnClickListener(v -> openSettingsActivity());
     }
 
     private void openTrailsListActivity() {
@@ -188,26 +215,9 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private void toggleFavorite(Trail trail, int position) {
-        // Toggle favorite status
-        trail.setFavorite(!trail.isFavorite());
-
-        // Update the item in adapter
-        trailAdapter.updateItem(position, trail);
-
-        // Show toast message
-        String message = trail.isFavorite() ?
-                "Added to favorites" : "Removed from favorites";
-        android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show();
-
-        // sugg: we can use sqlite here???
-    }
-
     private void startTrailNavigation(Trail trail) {
         Intent intent = new Intent(this, com.amilcarf.draft_hike.NavigationActivity.class);
-
-        // Use the trail's ID as the OSM ID
-        intent.putExtra("trail_osm_id", trail.getId()); // This should work now
+        intent.putExtra("trail_osm_id", trail.getId());
         intent.putExtra("trail_name", trail.getName());
         startActivity(intent);
 
@@ -225,15 +235,12 @@ public class MainActivity extends AppCompatActivity {
     private void makeEmergencyCall() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Emergency Assistance");
-
         builder.setPositiveButton("Call Emergency Services",
                 (dialog, which) -> {
                     Intent callIntent = new Intent(Intent.ACTION_DIAL);
-                    //Germany emergency services are 112 apparently
                     callIntent.setData(android.net.Uri.parse("tel:112"));
                     startActivity(callIntent);
                 });
-
         builder.setNeutralButton("Cancel", null);
         builder.show();
     }
